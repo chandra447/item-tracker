@@ -200,9 +200,9 @@ export function ItemViewDrawer({
     };
 
     const formatPrice = (price: number) => {
-        return new Intl.NumberFormat("en-US", {
+        return new Intl.NumberFormat("en-IN", {
             style: "currency",
-            currency: "USD",
+            currency: "INR",
         }).format(price);
     };
 
@@ -541,9 +541,9 @@ export function ItemViewDrawer({
                                                         />
                                                         <YAxis
                                                             tickFormatter={(value) =>
-                                                                new Intl.NumberFormat("en-US", {
+                                                                new Intl.NumberFormat("en-IN", {
                                                                     notation: "compact",
-                                                                    currency: "USD",
+                                                                    currency: "INR",
                                                                 }).format(value)
                                                             }
                                                             tick={{ fill: 'var(--color-muted-foreground)' }}
