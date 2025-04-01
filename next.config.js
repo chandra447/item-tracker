@@ -10,6 +10,13 @@ const nextConfig = {
     // your project has type errors.
     ignoreBuildErrors: true,
   },
+  // Allow cross-origin requests during development
+  experimental: {
+    allowedDevOrigins: [
+      "localhost:3000",
+      "192.168.68.100:3000"
+    ],
+  },
 };
 
 module.exports = nextConfig;
