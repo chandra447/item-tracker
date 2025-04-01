@@ -39,7 +39,7 @@ export function ItemCard({ item, onDelete, onAddPrice, onView }: ItemCardProps) 
     };
 
     return (
-        <Card>
+        <Card className="flex flex-col h-full">
             <CardHeader className="relative">
                 <Button
                     variant="ghost"
@@ -58,7 +58,7 @@ export function ItemCard({ item, onDelete, onAddPrice, onView }: ItemCardProps) 
                     Created: {formatDate(item.created_at)}
                 </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-grow">
                 <div className="space-y-2">
                     <div className="font-medium">Latest Price</div>
                     <div className="text-2xl font-bold">
@@ -66,14 +66,12 @@ export function ItemCard({ item, onDelete, onAddPrice, onView }: ItemCardProps) 
                             ? formatPrice(item.latestPrice.price)
                             : "No price yet"}
                     </div>
-                    {item.latestPrice && (
-                        <div className="text-xs text-muted-foreground">
-                            {formatDate(item.latestPrice.created_at)}
-                        </div>
-                    )}
+                    <div className="text-xs text-muted-foreground min-h-5">
+                        {item.latestPrice ? formatDate(item.latestPrice.created_at) : "\u00A0"}
+                    </div>
                 </div>
             </CardContent>
-            <CardFooter className="flex justify-end space-x-2">
+            <CardFooter className="flex justify-end space-x-2 mt-auto">
                 <Button variant="outline" onClick={onView}>
                     View
                 </Button>

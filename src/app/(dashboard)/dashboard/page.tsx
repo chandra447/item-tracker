@@ -34,6 +34,7 @@ export default function DashboardPage() {
     const [filteredItems, setFilteredItems] = useState<(Item & { latestPrice?: Price })[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+    const [sortOption, setSortOption] = useState<"created" | "price">("created");
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<Item | null>(null);
     const [isPriceDialogOpen, setIsPriceDialogOpen] = useState(false);
@@ -52,17 +53,35 @@ export default function DashboardPage() {
         fetchItems();
     }, []);
 
-    // Filter items when search term changes
+    // Filter and sort items when search term or sort option changes
     useEffect(() => {
+        let sorted = [...items];
+        
+        // Sort based on selected option
+        if (sortOption === "created") {
+            sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        } else if (sortOption === "price") {
+            sorted.sort((a, b) => {
+                // Items with no price go to the bottom
+                if (!a.latestPrice && !b.latestPrice) return 0;
+                if (!a.latestPrice) return 1;
+                if (!b.latestPrice) return -1;
+                
+                // Sort by price update date (most recent first)
+                return new Date(b.latestPrice.created_at).getTime() - new Date(a.latestPrice.created_at).getTime();
+            });
+        }
+        
+        // Then filter by search term
         if (searchTerm.trim() === "") {
-            setFilteredItems(items);
+            setFilteredItems(sorted);
         } else {
-            const filtered = items.filter((item) =>
+            const filtered = sorted.filter((item) =>
                 item.name.toLowerCase().includes(searchTerm.toLowerCase())
             );
             setFilteredItems(filtered);
         }
-    }, [searchTerm, items]);
+    }, [searchTerm, items, sortOption]);
 
     async function fetchItems() {
         setIsLoading(true);
@@ -96,7 +115,6 @@ export default function DashboardPage() {
             );
 
             setItems(itemsWithPrices);
-            setFilteredItems(itemsWithPrices);
         } catch (error) {
             console.error("Error fetching items:", error);
         } finally {
@@ -230,6 +248,29 @@ export default function DashboardPage() {
                         </Form>
                     </DialogContent>
                 </Dialog>
+            </div>
+            
+            {/* Sort Pills */}
+            <div className="flex items-center gap-2 mt-4">
+                <span className="text-sm text-muted-foreground">Sort by:</span>
+                <div className="flex gap-2">
+                    <Button 
+                        variant={sortOption === "created" ? "default" : "outline"} 
+                        size="sm" 
+                        className="rounded-full"
+                        onClick={() => setSortOption("created")}
+                    >
+                        Date Created
+                    </Button>
+                    <Button 
+                        variant={sortOption === "price" ? "default" : "outline"} 
+                        size="sm" 
+                        className="rounded-full"
+                        onClick={() => setSortOption("price")}
+                    >
+                        Latest Price
+                    </Button>
+                </div>
             </div>
 
             {/* Items Grid */}

@@ -24,6 +24,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { UserProfileDialog } from "@/components/user-profile-dialog";
+import { ScrollToTop } from "@/components/scroll-to-top";
 
 export default function DashboardLayout({
     children,
@@ -110,55 +111,57 @@ export default function DashboardLayout({
     }
 
     return (
-        <div className="min-h-screen flex flex-col bg-background">
-            <header className="border-b bg-background sticky top-0 z-30">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between py-4">
-                    <Link href="/dashboard" className="font-bold text-xl">
-                        Item Tracker
-                    </Link>
-                    <div className="flex items-center gap-4">
-                        <ThemeToggle />
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                                    <Avatar className="h-8 w-8">
-                                        <AvatarImage src="" alt={username} />
-                                        <AvatarFallback>
-                                            {username.substring(0, 2).toUpperCase()}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent className="w-56" align="end" forceMount>
-                                <div className="flex flex-col space-y-1 p-2">
-                                    <p className="text-sm font-medium leading-none">{username}</p>
-                                    <p className="text-xs leading-none text-muted-foreground">
-                                        {email}
-                                    </p>
-                                </div>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onSelect={() => setIsProfileOpen(true)}>
-                                    Profile
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onSelect={handleLogout}>
-                                    Log out
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+        <>
+            <div className="min-h-screen flex flex-col bg-background">
+                <header className="border-b bg-background sticky top-0 z-30">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between py-4">
+                        <Link href="/dashboard" className="font-bold text-xl">
+                            Item Tracker
+                        </Link>
+                        <div className="flex items-center gap-4">
+                            <ThemeToggle />
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                                        <Avatar className="h-8 w-8">
+                                            <AvatarImage src="" alt={username} />
+                                            <AvatarFallback>
+                                                {username.substring(0, 2).toUpperCase()}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="w-56" align="end" forceMount>
+                                    <div className="flex flex-col space-y-1 p-2">
+                                        <p className="text-sm font-medium leading-none">{username}</p>
+                                        <p className="text-xs leading-none text-muted-foreground">
+                                            {email}
+                                        </p>
+                                    </div>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onSelect={() => setIsProfileOpen(true)}>
+                                        Profile
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={handleLogout}>
+                                        Log out
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                     </div>
-                </div>
-            </header>
+                </header>
 
-            <main className="flex-1">
-                {children}
-            </main>
-
+                <main className="flex-1">
+                    {children}
+                </main>
+                <ScrollToTop />
+            </div>
             <UserProfileDialog
                 open={isProfileOpen}
                 onOpenChange={setIsProfileOpen}
                 username={username}
                 email={email}
             />
-        </div>
+        </>
     );
-} 
+}
