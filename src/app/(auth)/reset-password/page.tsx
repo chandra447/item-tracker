@@ -7,6 +7,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { confirmPasswordReset } from "@/lib/user-service";
+import { getClientPocketBase } from "@/lib/pocketbase-client";
+import { resetPasswordSchema, type ResetPasswordFormValues } from "@/lib/auth-schema";
+import { showSuccess, showError } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import {
     Form,
@@ -19,23 +22,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { CardTitle, CardDescription, CardContent, CardFooter, CardHeader, Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
-
-// Schema for the reset password form
-const resetPasswordSchema = z.object({
-    password: z.string().min(8, "Password must be at least 8 characters"),
-    passwordConfirm: z.string(),
-}).refine(data => data.password === data.passwordConfirm, {
-    message: "Passwords don't match",
-    path: ["passwordConfirm"],
-});
-
-type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
+import { Eye, EyeOff } from "lucide-react";
+import Image from "next/image";
 
 export default function ResetPasswordPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
     const [token, setToken] = useState<string | null>(null);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -73,15 +69,22 @@ export default function ResetPasswordPage() {
                 data.password,
                 data.passwordConfirm
             );
+            
+            // Clear auth store to log the user out
+            const pb = getClientPocketBase();
+            pb.authStore.clear();
+            
             setSuccess(true);
+            showSuccess("Password reset successful! Redirecting to login page...");
             form.reset();
 
-            // Redirect to login after 3 seconds
+            // Redirect to login after 2 seconds with success message
             setTimeout(() => {
-                router.push("/login");
-            }, 3000);
+                router.push("/login?resetSuccess=true");
+            }, 2000);
         } catch (err: any) {
             setError(err.message || "An error occurred while resetting your password.");
+            showError(err.message || "An error occurred while resetting your password.");
         } finally {
             setIsLoading(false);
         }
@@ -93,8 +96,17 @@ export default function ResetPasswordPage() {
                 <ThemeToggle />
             </div>
             <Card className="w-full max-w-md p-2">
-                <CardHeader className="text-center">
-                    <CardTitle className="text-2xl font-bold">Set New Password</CardTitle>
+                <CardHeader className="space-y-1 text-center pt-4">
+                    <div className="flex justify-center mb-2">
+                        <Image
+                            src="/icons/apple-touch-icon.png"
+                            alt="Item Tracker"
+                            width={80}
+                            height={80}
+                            className="rounded-xl"
+                        />
+                    </div>
+                    <CardTitle className="text-2xl">Set New Password</CardTitle>
                     <CardDescription>
                         Enter your new password to complete the reset process
                     </CardDescription>
@@ -122,13 +134,22 @@ export default function ResetPasswordPage() {
                                         <FormItem>
                                             <FormLabel>New Password</FormLabel>
                                             <FormControl>
-                                                <Input
-                                                    placeholder="••••••••"
-                                                    type="password"
-                                                    autoComplete="new-password"
-                                                    disabled={isLoading || !token}
-                                                    {...field}
-                                                />
+                                                <div className="relative">
+                                                    <Input
+                                                        placeholder="••••••••"
+                                                        type={showPassword ? "text" : "password"}
+                                                        autoComplete="new-password"
+                                                        disabled={isLoading || !token}
+                                                        {...field}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2"
+                                                        onClick={() => setShowPassword(!showPassword)}
+                                                    >
+                                                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                                    </button>
+                                                </div>
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -141,13 +162,22 @@ export default function ResetPasswordPage() {
                                         <FormItem>
                                             <FormLabel>Confirm New Password</FormLabel>
                                             <FormControl>
-                                                <Input
-                                                    placeholder="••••••••"
-                                                    type="password"
-                                                    autoComplete="new-password"
-                                                    disabled={isLoading || !token}
-                                                    {...field}
-                                                />
+                                                <div className="relative">
+                                                    <Input
+                                                        placeholder="••••••••"
+                                                        type={showConfirmPassword ? "text" : "password"}
+                                                        autoComplete="new-password"
+                                                        disabled={isLoading || !token}
+                                                        {...field}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2"
+                                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                    >
+                                                        {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                                    </button>
+                                                </div>
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -160,7 +190,7 @@ export default function ResetPasswordPage() {
                         </Form>
                     )}
                 </CardContent>
-                <CardFooter className="flex flex-col space-y-4">
+                <CardFooter className="flex flex-col space-y-4 pb-8">
                     <div className="text-center text-sm">
                         Remember your password?{" "}
                         <Link

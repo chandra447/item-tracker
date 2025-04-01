@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, TrendingUp } from "lucide-react";
+import { CalendarIcon, TrendingUp, ChevronRight, ChevronDown } from "lucide-react";
 import { getClientPocketBase } from "@/lib/pocketbase-client";
 import { type Item, type Price } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
     Drawer,
     DrawerClose,
@@ -21,15 +22,6 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 import {
     LineChart,
     Line,
@@ -84,11 +76,52 @@ export function ItemViewDrawer({
         count: 0,
     });
 
+    // State to track expanded/collapsed groups
+    const [expandedYears, setExpandedYears] = useState<number[]>([]);
+    const [expandedMonths, setExpandedMonths] = useState<string[]>([]);
+    const [expandedDates, setExpandedDates] = useState<string[]>([]);
+
+    // Toggle functions for each level
+    const toggleYear = (year: number) => {
+        setExpandedYears(prev => 
+            prev.includes(year) 
+                ? prev.filter(y => y !== year) 
+                : [...prev, year]
+        );
+    };
+
+    const toggleMonth = (yearMonth: string) => {
+        setExpandedMonths(prev => 
+            prev.includes(yearMonth) 
+                ? prev.filter(m => m !== yearMonth) 
+                : [...prev, yearMonth]
+        );
+    };
+
+    const toggleDate = (yearMonthDate: string) => {
+        setExpandedDates(prev => 
+            prev.includes(yearMonthDate) 
+                ? prev.filter(d => d !== yearMonthDate) 
+                : [...prev, yearMonthDate]
+        );
+    };
+
     useEffect(() => {
         if (open) {
             fetchPrices();
         }
     }, [open, dateRange]);
+
+    useEffect(() => {
+        if (prices.length > 0) {
+            const currentYear = new Date().getFullYear();
+            setExpandedYears([currentYear]);
+            
+            // Expand current month
+            const currentMonth = new Date().toLocaleString("default", { month: "long" });
+            setExpandedMonths([`${currentYear}-${currentMonth}`]);
+        }
+    }, [prices]);
 
     async function fetchPrices() {
         setIsLoading(true);
@@ -150,6 +183,22 @@ export function ItemViewDrawer({
         }
     };
 
+    const formatDateTime = (dateString: string) => {
+        try {
+            return format(new Date(dateString), "PPPPp");
+        } catch (error) {
+            return "Unknown date";
+        }
+    };
+
+    const formatTime = (dateString: string) => {
+        try {
+            return format(new Date(dateString), "h:mm a");
+        } catch (error) {
+            return "Unknown time";
+        }
+    };
+
     const formatPrice = (price: number) => {
         return new Intl.NumberFormat("en-US", {
             style: "currency",
@@ -190,6 +239,57 @@ export function ItemViewDrawer({
             color: "var(--color-primary)",
         },
     } satisfies ChartConfig;
+
+    const groupPricesByDate = (prices: Price[]) => {
+        // First sort prices by date (newest first)
+        const sortedPrices = [...prices].sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        
+        const groupedPrices: {
+            year: number;
+            yearPrices: {
+                month: string;
+                monthPrices: {
+                    date: string;
+                    datePrices: Price[];
+                }[];
+            }[];
+        }[] = [];
+        
+        sortedPrices.forEach(price => {
+            const date = new Date(price.created_at);
+            const year = date.getFullYear();
+            const month = date.toLocaleString("default", { month: "long" });
+            const dayStr = format(date, "EEEE, MMMM do, yyyy");
+            
+            // Find or create year group
+            let yearGroup = groupedPrices.find(g => g.year === year);
+            if (!yearGroup) {
+                yearGroup = { year, yearPrices: [] };
+                groupedPrices.push(yearGroup);
+            }
+            
+            // Find or create month group
+            let monthGroup = yearGroup.yearPrices.find(g => g.month === month);
+            if (!monthGroup) {
+                monthGroup = { month, monthPrices: [] };
+                yearGroup.yearPrices.push(monthGroup);
+            }
+            
+            // Find or create date group
+            let dateGroup = monthGroup.monthPrices.find(g => g.date === dayStr);
+            if (!dateGroup) {
+                dateGroup = { date: dayStr, datePrices: [] };
+                monthGroup.monthPrices.push(dateGroup);
+            }
+            
+            // Add price to date group
+            dateGroup.datePrices.push(price);
+        });
+        
+        return groupedPrices;
+    };
 
     return (
         <Drawer open={open} onOpenChange={onOpenChange}>
@@ -305,34 +405,92 @@ export function ItemViewDrawer({
                                         {/* Price Table */}
                                         <div>
                                             <h3 className="text-lg font-medium mb-2">Price History</h3>
-                                            <div className="border rounded-lg">
-                                                <Table>
-                                                    <TableHeader>
-                                                        <TableRow>
-                                                            <TableHead>Date</TableHead>
-                                                            <TableHead>Price</TableHead>
-                                                        </TableRow>
-                                                    </TableHeader>
-                                                    <TableBody>
+                                            <div className="border rounded-lg overflow-hidden">
+                                                <table className="w-full">
+                                                    <thead>
+                                                        <tr className="border-b bg-muted/50">
+                                                            <th className="text-left p-2">Date & Time</th>
+                                                            <th className="text-left p-2">Price</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
                                                         {prices.length === 0 ? (
-                                                            <TableRow>
-                                                                <TableCell
+                                                            <tr>
+                                                                <td
                                                                     colSpan={2}
-                                                                    className="text-center h-24 text-muted-foreground"
+                                                                    className="text-center h-24 text-muted-foreground p-2"
                                                                 >
                                                                     No price data available
-                                                                </TableCell>
-                                                            </TableRow>
+                                                                </td>
+                                                            </tr>
                                                         ) : (
-                                                            prices.map((price) => (
-                                                                <TableRow key={price.id}>
-                                                                    <TableCell>{formatDate(price.created_at)}</TableCell>
-                                                                    <TableCell>{formatPrice(price.price)}</TableCell>
-                                                                </TableRow>
+                                                            groupPricesByDate(prices).map((yearGroup) => (
+                                                                <Fragment key={yearGroup.year}>
+                                                                    <tr 
+                                                                        className="bg-primary/10 cursor-pointer hover:bg-primary/20 transition-colors"
+                                                                        onClick={() => toggleYear(yearGroup.year)}
+                                                                    >
+                                                                        <td colSpan={2} className="p-2 font-semibold flex items-center">
+                                                                            {expandedYears.includes(yearGroup.year) 
+                                                                                ? <ChevronDown className="h-4 w-4 mr-1" /> 
+                                                                                : <ChevronRight className="h-4 w-4 mr-1" />
+                                                                            }
+                                                                            {yearGroup.year}
+                                                                        </td>
+                                                                    </tr>
+                                                                    {expandedYears.includes(yearGroup.year) && yearGroup.yearPrices.map((monthGroup) => {
+                                                                        const monthKey = `${yearGroup.year}-${monthGroup.month}`;
+                                                                        return (
+                                                                            <Fragment key={monthGroup.month}>
+                                                                                <tr 
+                                                                                    className="bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors"
+                                                                                    onClick={() => toggleMonth(monthKey)}
+                                                                                >
+                                                                                    <td colSpan={2} className="p-2 font-medium pl-4 flex items-center">
+                                                                                        {expandedMonths.includes(monthKey) 
+                                                                                            ? <ChevronDown className="h-4 w-4 mr-1" /> 
+                                                                                            : <ChevronRight className="h-4 w-4 mr-1" />
+                                                                                        }
+                                                                                        {monthGroup.month}
+                                                                                    </td>
+                                                                                </tr>
+                                                                                {expandedMonths.includes(monthKey) && monthGroup.monthPrices.map((dateGroup) => {
+                                                                                    const dateKey = `${monthKey}-${dateGroup.date}`;
+                                                                                    return (
+                                                                                        <Fragment key={dateGroup.date}>
+                                                                                            <tr 
+                                                                                                className="bg-muted/20 cursor-pointer hover:bg-muted/30 transition-colors"
+                                                                                                onClick={() => toggleDate(dateKey)}
+                                                                                            >
+                                                                                                <td colSpan={2} className="p-2 pl-6 text-sm flex items-center">
+                                                                                                    {expandedDates.includes(dateKey) 
+                                                                                                        ? <ChevronDown className="h-3 w-3 mr-1" /> 
+                                                                                                        : <ChevronRight className="h-3 w-3 mr-1" />
+                                                                                                    }
+                                                                                                    {dateGroup.date}
+                                                                                                </td>
+                                                                                            </tr>
+                                                                                            {expandedDates.includes(dateKey) && dateGroup.datePrices.map((price) => (
+                                                                                                <tr key={price.id} className="border-b">
+                                                                                                    <td className="p-2 pl-10">
+                                                                                                        {formatTime(price.created_at)}
+                                                                                                    </td>
+                                                                                                    <td className="p-2">
+                                                                                                        {formatPrice(price.price)}
+                                                                                                    </td>
+                                                                                                </tr>
+                                                                                            ))}
+                                                                                        </Fragment>
+                                                                                    );
+                                                                                })}
+                                                                            </Fragment>
+                                                                        );
+                                                                    })}
+                                                                </Fragment>
                                                             ))
                                                         )}
-                                                    </TableBody>
-                                                </Table>
+                                                    </tbody>
+                                                </table>
                                             </div>
                                         </div>
                                     </>

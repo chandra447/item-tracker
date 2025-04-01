@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { resetPassword } from "@/lib/user-service";
+import { showSuccess, showError } from "@/lib/toast";
 import {
     Dialog,
     DialogContent,
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Eye, EyeOff } from "lucide-react";
 
 interface UserProfileDialogProps {
     open: boolean;
@@ -53,6 +55,9 @@ export function UserProfileDialog({
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isResetMode, setIsResetMode] = useState(false);
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const router = useRouter();
 
     const form = useForm<ProfileResetFormValues>({
@@ -72,10 +77,28 @@ export function UserProfileDialog({
             await resetPassword(data.oldPassword, data.password, data.passwordConfirm);
             setIsResetMode(false);
             onOpenChange(false);
-            router.push("/login");
-            router.refresh();
+            showSuccess("Password reset successful! Please log in again.");
+            // Clear form
+            form.reset();
+            // Add a small delay before redirecting
+            setTimeout(() => {
+                router.push("/login");
+                router.refresh();
+            }, 1500);
         } catch (err: any) {
-            setError(err.message || "Failed to reset password. Please try again.");
+            // Handle specific error cases
+            if (err.status === 400) {
+                const errorMessage = "Current password is incorrect";
+                setError(errorMessage);
+                showError(errorMessage);
+            } else if (err.message) {
+                setError(err.message);
+                showError(err.message);
+            } else {
+                const errorMessage = "Failed to reset password. Please try again.";
+                setError(errorMessage);
+                showError(errorMessage);
+            }
         } finally {
             setIsLoading(false);
         }
@@ -129,12 +152,23 @@ export function UserProfileDialog({
                                     <FormItem>
                                         <FormLabel>Current Password</FormLabel>
                                         <FormControl>
-                                            <Input
-                                                placeholder="••••••••"
-                                                type="password"
-                                                disabled={isLoading}
-                                                {...field}
-                                            />
+                                            <div className="relative">
+                                                <Input
+                                                    placeholder="••••••••"
+                                                    type={showCurrentPassword ? "text" : "password"}
+                                                    disabled={isLoading}
+                                                    {...field}
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="absolute right-0 top-0 h-full px-3"
+                                                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                                >
+                                                    {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                </Button>
+                                            </div>
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -147,12 +181,23 @@ export function UserProfileDialog({
                                     <FormItem>
                                         <FormLabel>New Password</FormLabel>
                                         <FormControl>
-                                            <Input
-                                                placeholder="••••••••"
-                                                type="password"
-                                                disabled={isLoading}
-                                                {...field}
-                                            />
+                                            <div className="relative">
+                                                <Input
+                                                    placeholder="••••••••"
+                                                    type={showNewPassword ? "text" : "password"}
+                                                    disabled={isLoading}
+                                                    {...field}
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="absolute right-0 top-0 h-full px-3"
+                                                    onClick={() => setShowNewPassword(!showNewPassword)}
+                                                >
+                                                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                </Button>
+                                            </div>
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -165,12 +210,23 @@ export function UserProfileDialog({
                                     <FormItem>
                                         <FormLabel>Confirm New Password</FormLabel>
                                         <FormControl>
-                                            <Input
-                                                placeholder="••••••••"
-                                                type="password"
-                                                disabled={isLoading}
-                                                {...field}
-                                            />
+                                            <div className="relative">
+                                                <Input
+                                                    placeholder="••••••••"
+                                                    type={showConfirmPassword ? "text" : "password"}
+                                                    disabled={isLoading}
+                                                    {...field}
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="absolute right-0 top-0 h-full px-3"
+                                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                >
+                                                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                </Button>
+                                            </div>
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>

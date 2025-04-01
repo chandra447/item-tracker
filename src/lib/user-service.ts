@@ -1,9 +1,8 @@
-import { getClientPocketBase } from "@/lib/pocketbase-client";
+import { getClientPocketBase, completeLogout } from "@/lib/pocketbase-client";
 import type { User } from "@/lib/types";
 
 export async function logout() {
-    const pb = getClientPocketBase();
-    pb.authStore.clear();
+    completeLogout();
 }
 
 export async function resetPassword(oldPassword: string, newPassword: string, newPasswordConfirm: string) {
@@ -13,11 +12,17 @@ export async function resetPassword(oldPassword: string, newPassword: string, ne
         throw new Error("You must be logged in to reset your password");
     }
 
-    return pb.collection("users").update(pb.authStore.model.id, {
+    // Update the password
+    const result = await pb.collection("users").update(pb.authStore.model.id, {
         oldPassword,
         password: newPassword,
         passwordConfirm: newPasswordConfirm,
     });
+    
+    // Clear authentication after password reset
+    completeLogout();
+    
+    return result;
 }
 
 export async function requestPasswordReset(email: string) {

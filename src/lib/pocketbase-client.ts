@@ -51,8 +51,15 @@ export function getClientPocketBase() {
                 // Clear the cookie when logged out
                 document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
                 console.log("[Client] Auth cookie cleared");
+                
+                // Also clear localStorage to ensure complete logout
+                localStorage.removeItem('pocketbase_auth');
+                sessionStorage.removeItem('pocketbase_auth');
+                console.log("[Client] Auth storage cleared");
             }
         });
+
+        // Connection check removed to prevent 401 errors
     }
 
     return clientPb;
@@ -63,19 +70,29 @@ export function getClientPocketBase() {
  */
 export const isAuthenticated = () => {
     if (typeof window === 'undefined') return false;
+    const pb = getClientPocketBase();
+    return pb.authStore.isValid;
+};
 
-    try {
-        const pb = getClientPocketBase();
-        const isValid = pb.authStore.isValid;
-        console.log("Auth check - isAuthenticated:", isValid);
-        if (isValid) {
-            console.log("User ID:", pb.authStore.model?.id);
-        }
-        return isValid;
-    } catch (e) {
-        console.error("Error checking authentication:", e);
-        return false;
-    }
+/**
+ * Completely logout and clear all auth data
+ */
+export const completeLogout = () => {
+    if (typeof window === 'undefined') return;
+    
+    const pb = getClientPocketBase();
+    
+    // Clear PocketBase auth store
+    pb.authStore.clear();
+    
+    // Clear cookies
+    document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+    
+    // Clear any localStorage/sessionStorage items
+    localStorage.removeItem('pocketbase_auth');
+    sessionStorage.removeItem('pocketbase_auth');
+    
+    console.log("[Client] Complete logout performed");
 };
 
 /**
@@ -95,3 +112,26 @@ export const getCurrentUser = () => {
         return null;
     }
 }; 
+
+/**
+ * Safely authenticate with PocketBase without throwing errors to the console
+ * @param email User email
+ * @param password User password
+ * @returns An object with success status and optional data or error
+ */
+export const safeAuthenticate = async (email: string, password: string) => {
+  const pb = getClientPocketBase();
+  try {
+    const authData = await pb.collection("users").authWithPassword(email, password);
+    return { success: true, data: authData };
+  } catch (error: any) {
+    // Prevent error from propagating to console
+    return { 
+      success: false, 
+      error: {
+        status: error.status || 500,
+        message: error.message || "Authentication failed"
+      }
+    };
+  }
+};

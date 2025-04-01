@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { getClientPocketBase } from "@/lib/pocketbase-client";
 import { itemSchema, type ItemFormValues } from "@/lib/auth-schema";
 import { type Item, type Price } from "@/lib/types";
+import { showSuccess, showError, showInfo } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -28,6 +29,7 @@ import {
 import { ItemCard } from "@/components/item-card";
 import { ItemPriceDialog } from "@/components/item-price-dialog";
 import { ItemViewDrawer } from "@/components/item-view-drawer";
+import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
     const [items, setItems] = useState<(Item & { latestPrice?: Price })[]>([]);
@@ -48,9 +50,20 @@ export default function DashboardPage() {
         },
     });
 
+    const router = useRouter();
+
     // Fetch items on initial load
     useEffect(() => {
         fetchItems();
+        
+        // Check authentication status
+        const pb = getClientPocketBase();
+        if (!pb.authStore.isValid) {
+            console.log("User not authenticated, redirecting to login");
+            router.push("/login");
+        } else {
+            console.log("User authenticated:", pb.authStore.model?.id);
+        }
     }, []);
 
     // Filter and sort items when search term or sort option changes
@@ -144,8 +157,10 @@ export default function DashboardPage() {
             await fetchItems();
             form.reset();
             setIsCreateDialogOpen(false);
+            showSuccess(`Item "${data.name}" created successfully!`);
         } catch (error) {
             console.error("Error creating item:", error);
+            showError("Failed to create item. Please try again.");
         }
     }
 
@@ -167,10 +182,16 @@ export default function DashboardPage() {
             // Delete the item
             await pb.collection("items").delete(itemId);
 
+            // Get item name from the items array
+            const deletedItem = items.find(item => item.id === itemId);
+            const itemName = deletedItem?.name || "Item";
+
             // Refresh items
             await fetchItems();
+            showSuccess(`${itemName} deleted successfully`);
         } catch (error) {
             console.error("Error deleting item:", error);
+            showError("Failed to delete item. Please try again.");
         }
     }
 

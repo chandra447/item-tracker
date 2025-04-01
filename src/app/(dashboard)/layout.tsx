@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { isAuthenticated, getCurrentUser } from "@/lib/pocketbase";
+import Image from "next/image";
+import { getClientPocketBase } from "@/lib/pocketbase-client";
 import { logout } from "@/lib/user-service";
+import { showSuccess, showInfo, showError } from "@/lib/toast";
+import { isAuthenticated, getCurrentUser } from "@/lib/pocketbase";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -81,11 +84,13 @@ export default function DashboardLayout({
         console.log("Logging out...");
         try {
             await logout();
+            showSuccess("Logged out successfully");
             console.log("Logged out, redirecting to login");
             router.push("/login");
             router.refresh();
         } catch (error) {
             console.error("Error during logout:", error);
+            showError("Error during logout. Redirecting to login page.");
             // Force redirect to login even if logout fails
             router.push("/login");
         }
@@ -115,7 +120,12 @@ export default function DashboardLayout({
             <div className="min-h-screen flex flex-col bg-background">
                 <header className="border-b bg-background sticky top-0 z-30">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between py-4">
-                        <Link href="/dashboard" className="font-bold text-xl">
+                        <Link href="/dashboard" className="font-bold text-xl flex items-center gap-2">
+                            <img 
+                                src="/icons/android-chrome-192x192.png" 
+                                alt="Item Tracker Logo" 
+                                className="h-8 w-8"
+                            />
                             Item Tracker
                         </Link>
                         <div className="flex items-center gap-4">
